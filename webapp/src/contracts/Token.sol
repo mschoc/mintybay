@@ -1,25 +1,53 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity ^0.8.4;
 
-import './ERC721Connector.sol';
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract Token is ERC721Connector{
+//import './ERC721Connector.sol';
 
-    // array to store tokens
-    string [] public tokens;
+contract Token is ERC721Enumerable{
+    using Counters for Counters.Counter;
 
-    mapping(string => bool) _tokensExists;
+    Counters.Counter private _tokenIds;
+    address private contractAddress;
 
-    function mint(string memory _token) public{
-
-        require(!_tokensExists[_token], 'Error - Token already exists');
-        tokens.push(_token);
-        uint _id = tokens.length - 1;
-        _mint(msg.sender, _id);
-
-        _tokensExists[_token] = true;
+    struct Item {
+        uint256 id;
+        address creator;
+        string name;
+        string symbol;
+        string uri;
     }
 
-    constructor() ERC721Connector('ExampleToken', 'EXTOKEN'){}
+    mapping(uint256 => Item) public Items;
+
+    constructor() ERC721("mintybay Token", "MBT"){}
+
+    function mint(string memory _tokenUri) public returns (uint256){
+
+        _tokenIds.increment();
+        uint256 newItemId = _tokenIds.current();
+        _safeMint(msg.sender, newItemId);
+        approve(contractAddress, newItemId);
+        
+        Items[newItemId] = Item({
+            id: newItemId,
+            creator: msg.sender,
+            name: name(),
+            symbol: symbol(),
+            uri: _tokenUri
+        });
+
+        return newItemId;
+    }
+
+    // TODO override tokenURI?
+
+    function setMarketplaceAddress(address marketplaceAddress) public {
+        contractAddress = marketplaceAddress;
+    }
 
 }
