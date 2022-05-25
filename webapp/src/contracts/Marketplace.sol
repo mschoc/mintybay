@@ -1,67 +1,142 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.0;
 
-import "./Token.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract Marketplace{
-    Token private token;
+contract Marketplace is ReentrancyGuard{
+    using Counters for Counters.Counter;
+    Counters.Counter private _marketItemIds; 
+    Counters.Counter private _marketItemsSold;
 
     struct MarketItem{
         uint256 id;
         uint256 tokenId;
+        IERC721 token;
         address payable seller;
         address payable owner;
         uint256 price;
         bool sold;
     }
 
-    MarketItem[] public marketItems;
+    mapping(uint256 => MarketItem) public marketItems;
 
-    event itemPlacedOnMarket(uint256 id, uint256 tokenId, address seller, uint256 price);
-    event itemSold(uint256 id, uint256 tokenId, address buyer, uint256 price);
+    event marketItemCreated(
+        uint256 indexed id, 
+        uint256 indexed tokenId,
+        address indexed tokenAddress,
+        address seller,
+        address owner,
+        uint256 price
+    );
 
-    constructor(Token _token){
-        token = _token;
-    }
+    event marketItemSold(
+        uint256 indexed id, 
+        uint256 indexed tokenId,
+        address indexed tokenAddress,
+        address seller,
+        address buyer,
+        uint256 price
+    );
+    
+    function createMarketItem(IERC721 token, uint256 tokenId, uint256 price) external nonReentrant{
+        require(price > 0, "Price must be greater than zero");
+        _marketItemIds.increment();
+        uint256 marketItemId = _marketItemIds.current();
 
-    function placeItemOnMarket(uint256 tokenId, uint256 price) external returns (uint256){
-        require(token.ownerOf(tokenId) == msg.sender, "Seller is not the owner of the Item");
-        require(token.getApproved(tokenId) == address(this), "Market address is not approved");
-
-        uint256 newMarketItemId = marketItems.length;
-        marketItems.push(
-            MarketItem({
-                id: newMarketItemId,
-                tokenId: tokenId,
-                seller: payable(msg.sender),
-                owner: payable(msg.sender),
-                price: price,
-                sold: false
-            })
+        marketItems[marketItemId] = MarketItem(
+            marketItemId,
+            tokenId,
+            token,
+            payable(msg.sender),
+            payable(address(0)),
+            price,
+            false
         );
 
-        emit itemPlacedOnMarket(newMarketItemId, tokenId, msg.sender, price);
+        token.transferFrom(msg.sender, address(this), tokenId);
 
-        return newMarketItemId;
+        emit marketItemCreated(
+            marketItemId,
+            tokenId,
+            address(token),
+            msg.sender,
+            address(0),
+            price
+        );
     }
 
-    function buyItem(uint256 id) payable external{
-        require(marketItems[id].id == id, "No item found");
-        require(token.getApproved(marketItems[id].tokenId) == address(this), "Market address is not approved");
+    function buyMarketItem(uint256 id) payable external nonReentrant{
+
+        require(id > 0 && id <= _marketItemIds.current(), "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
-        require(msg.sender != marketItems[id].seller);
-        // TODO Check whether buyer has enough funds
-        // require(msg.value >= marketItems[id].price, "Insufficient funds");
+        require(msg.value >= marketItems[id].price, "Insufficient funds");
 
-        marketItems[id].sold = true;
-        token.safeTransferFrom(marketItems[id].seller, msg.sender, marketItems[id].tokenId);
-        marketItems[id].seller.transfer(msg.value);
+        marketItems[id].seller.transfer(marketItems[id].price);
+        marketItems[id].token.transferFrom(address(this), msg.sender, marketItems[id].tokenId);
         marketItems[id].owner = payable(msg.sender);
+        marketItems[id].sold = true;
 
-        emit itemSold(id, marketItems[id].tokenId, msg.sender, marketItems[id].price);
+        _marketItemsSold.increment();
+
+        emit marketItemSold(
+            id, 
+            marketItems[id].tokenId, 
+            address(marketItems[id].token),
+            marketItems[id].seller,
+            msg.sender,
+            marketItems[id].price
+        );
     }
 
+    // for testing purposes
     function getMsgSender() public returns (address){
         return msg.sender;
+    }
+
+    // for testing purposes
+    function getMsgValue() public payable returns (uint256){
+        return msg.value;
+    }
+
+    function getUnsoldMarketItems() public view returns (MarketItem[] memory){
+        uint256 marketItemCount = _marketItemIds.current();
+        uint256 unsoldMarketItemCount = _marketItemIds.current() - _marketItemsSold.current();
+        uint256 currentIndex = 0;
+
+        MarketItem[] memory unsoldMarketItems = new MarketItem[](unsoldMarketItemCount);
+        for (uint256 i = 0; i < marketItemCount; i++) {
+            if (marketItems[i + 1].sold == false) {
+                uint256 currentId =  i + 1;
+                MarketItem storage currentItem = marketItems[currentId];
+                unsoldMarketItems[currentIndex] = currentItem;
+                currentIndex += 1;
+            } 
+        }
+        return unsoldMarketItems;
+    }
+
+    function getMyOwnedNFTs() public view returns (MarketItem[] memory){
+        uint256 totalMarketItemCount = _marketItemIds.current();
+        uint256 marketItemCount = 0;
+        uint256 currentIndex = 0;
+
+        for (uint i = 0; i < totalMarketItemCount; i++) {
+            if (marketItems[i + 1].owner == msg.sender) {
+                marketItemCount += 1;
+            }
+        }
+
+        MarketItem[] memory myItems = new MarketItem[](marketItemCount);
+        for (uint256 i = 0; i < totalMarketItemCount; i++) {
+            if (marketItems[i + 1].owner == msg.sender) {
+                uint256 currentId =  i + 1;
+                MarketItem storage currentItem = marketItems[currentId];
+                myItems[currentIndex] = currentItem;
+                currentIndex += 1;
+            }
+        }
+        return myItems;
     }
 }
