@@ -13,9 +13,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: webapp
 
     strategy:
       matrix:
@@ -29,8 +26,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        filters: |
-          webapp:
-            - 'webapp/**'
     - run: npm ci
+      working-directory: ./webapp
     - run: npx hardhat test
+      working-directory: ./webapp
