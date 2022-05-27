@@ -29,5 +29,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        filters: |
+          webapp:
+            - 'webapp/**'
     - run: npm ci
     - run: npx hardhat test
