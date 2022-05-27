@@ -3,12 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract Marketplace is ReentrancyGuard{
-    using Counters for Counters.Counter;
-    Counters.Counter private _marketItemIds; 
-    Counters.Counter private _marketItemsSold;
+    uint256 public marketItemCount; 
+    uint256 public marketItemsSoldCount;
 
     struct MarketItem{
         uint256 id;
@@ -42,8 +40,8 @@ contract Marketplace is ReentrancyGuard{
     
     function createMarketItem(IERC721 token, uint256 tokenId, uint256 price) external nonReentrant{
         require(price > 0, "Price must be greater than zero");
-        _marketItemIds.increment();
-        uint256 marketItemId = _marketItemIds.current();
+        marketItemCount++;
+        uint256 marketItemId = marketItemCount;
 
         marketItems[marketItemId] = MarketItem(
             marketItemId,
@@ -69,7 +67,7 @@ contract Marketplace is ReentrancyGuard{
 
     function buyMarketItem(uint256 id) payable external nonReentrant{
 
-        require(id > 0 && id <= _marketItemIds.current(), "Item does not exist");
+        require(id > 0 && id <= marketItemCount, "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
         require(msg.value >= marketItems[id].price, "Insufficient funds");
 
@@ -78,7 +76,7 @@ contract Marketplace is ReentrancyGuard{
         marketItems[id].owner = payable(msg.sender);
         marketItems[id].sold = true;
 
-        _marketItemsSold.increment();
+       marketItemsSoldCount++;
 
         emit marketItemSold(
             id, 
@@ -90,23 +88,13 @@ contract Marketplace is ReentrancyGuard{
         );
     }
 
-    // for testing purposes
-    function getMsgSender() public returns (address){
-        return msg.sender;
-    }
-
-    // for testing purposes
-    function getMsgValue() public payable returns (uint256){
-        return msg.value;
-    }
-
     function getUnsoldMarketItems() public view returns (MarketItem[] memory){
-        uint256 marketItemCount = _marketItemIds.current();
-        uint256 unsoldMarketItemCount = _marketItemIds.current() - _marketItemsSold.current();
+        uint256 totalMarketItemCount = marketItemCount;
+        uint256 unsoldMarketItemCount = marketItemCount - marketItemsSoldCount;
         uint256 currentIndex = 0;
 
         MarketItem[] memory unsoldMarketItems = new MarketItem[](unsoldMarketItemCount);
-        for (uint256 i = 0; i < marketItemCount; i++) {
+        for (uint256 i = 0; i < totalMarketItemCount; i++) {
             if (marketItems[i + 1].sold == false) {
                 uint256 currentId =  i + 1;
                 MarketItem storage currentItem = marketItems[currentId];
@@ -118,17 +106,17 @@ contract Marketplace is ReentrancyGuard{
     }
 
     function getMyOwnedNFTs() public view returns (MarketItem[] memory){
-        uint256 totalMarketItemCount = _marketItemIds.current();
-        uint256 marketItemCount = 0;
+        uint256 totalMarketItemCount = marketItemCount;
+        uint256 marketItemCountOwned = 0;
         uint256 currentIndex = 0;
 
         for (uint i = 0; i < totalMarketItemCount; i++) {
             if (marketItems[i + 1].owner == msg.sender) {
-                marketItemCount += 1;
+                marketItemCountOwned += 1;
             }
         }
 
-        MarketItem[] memory myItems = new MarketItem[](marketItemCount);
+        MarketItem[] memory myItems = new MarketItem[](marketItemCountOwned);
         for (uint256 i = 0; i < totalMarketItemCount; i++) {
             if (marketItems[i + 1].owner == msg.sender) {
                 uint256 currentId =  i + 1;
