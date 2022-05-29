@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 contract Marketplace is ReentrancyGuard{
     uint256 public marketItemCount; 
@@ -48,7 +49,7 @@ contract Marketplace is ReentrancyGuard{
             tokenId,
             token,
             payable(msg.sender),
-            payable(address(0)),
+            payable(msg.sender),
             price,
             false
         );
@@ -60,7 +61,7 @@ contract Marketplace is ReentrancyGuard{
             tokenId,
             address(token),
             msg.sender,
-            address(0),
+            msg.sender,
             price
         );
     }
@@ -70,6 +71,7 @@ contract Marketplace is ReentrancyGuard{
         require(id > 0 && id <= marketItemCount, "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
         require(msg.value >= marketItems[id].price, "Insufficient funds");
+        require(msg.sender != marketItems[id].seller, "Seller cannot be the same address as the buyer");
 
         marketItems[id].seller.transfer(marketItems[id].price);
         marketItems[id].token.transferFrom(address(this), msg.sender, marketItems[id].tokenId);
