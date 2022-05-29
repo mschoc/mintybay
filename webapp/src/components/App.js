@@ -4,6 +4,7 @@ import { ethers } from "ethers"
 import Nav from './Navbar';
 import Market from './Market.js'
 import Create from './Create.js'
+import MyCollection from './MyCollection.js'
 import MarketplaceContractData from '../contractsData/Marketplace.json'
 import MarketplaceAddress from '../contractsData/Marketplace-address.json'
 import TokenContractData from '../contractsData/Token.json'
@@ -29,7 +30,7 @@ function App() {
         loadContracts(signer)
     }
 
-    // load contract data
+    // load contract dataö
     const loadContracts = async (signer) => {
         const marketplace = new ethers.Contract(MarketplaceAddress.address, MarketplaceContractData.abi, signer)
         setMarketplace(marketplace)
@@ -54,6 +55,9 @@ function App() {
                             } />
                             <Route path="/create" element={
                                 <Create marketplace={marketplace} token={token} />
+                            } />
+                            <Route path="/mycollection" element={
+                                <MyCollection marketplace={marketplace} token={token} account={account}/>
                             } />
                         </Routes>
                     )}
