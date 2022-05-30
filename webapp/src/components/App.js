@@ -46,7 +46,7 @@ function App() {
                 <div>
                     {loading ? (
                         <main>
-                            <h2>Please connect Wallet!</h2>
+                            <h2 style={{ paddingTop: "2rem" }}>Please connect Wallet!</h2>
                         </main>
                     ) : (
                         <Routes>
