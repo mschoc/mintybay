@@ -44,24 +44,30 @@ contract Marketplace is ReentrancyGuard{
         marketItemCount++;
         uint256 marketItemId = marketItemCount;
 
+        for (uint256 i = 0; i < marketItemCount; i++) {
+            if (marketItems[i + 1].tokenId == tokenId) {
+                marketItems[i + 1].owner = payable(address(0));
+            }
+        }
+
         marketItems[marketItemId] = MarketItem(
             marketItemId,
             tokenId,
             token,
             payable(msg.sender),
-            payable(msg.sender),
+            payable(address(0)),
             price,
             false
         );
 
         token.transferFrom(msg.sender, address(this), tokenId);
-
+        
         emit marketItemCreated(
             marketItemId,
             tokenId,
             address(token),
             msg.sender,
-            msg.sender,
+            address(0),
             price
         );
     }
@@ -78,7 +84,7 @@ contract Marketplace is ReentrancyGuard{
         marketItems[id].owner = payable(msg.sender);
         marketItems[id].sold = true;
 
-       marketItemsSoldCount++;
+        marketItemsSoldCount++;
 
         emit marketItemSold(
             id, 
@@ -88,8 +94,11 @@ contract Marketplace is ReentrancyGuard{
             msg.sender,
             marketItems[id].price
         );
+
+        marketItems[id].seller = payable(address(0));
     }
 
+    // for testing purposes
     function getUnsoldMarketItems() public view returns (MarketItem[] memory){
         uint256 totalMarketItemCount = marketItemCount;
         uint256 unsoldMarketItemCount = marketItemCount - marketItemsSoldCount;
@@ -107,6 +116,7 @@ contract Marketplace is ReentrancyGuard{
         return unsoldMarketItems;
     }
 
+    // for testing purposes
     function getMyOwnedNFTs() public view returns (MarketItem[] memory){
         uint256 totalMarketItemCount = marketItemCount;
         uint256 marketItemCountOwned = 0;
