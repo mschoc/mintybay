@@ -27,8 +27,8 @@ const Create = ({ marketplace, token }) => {
         }
     }
 
-    // create and place nft on market
-    const createAndPlaceNFT = async () => {
+    // create and sell nft on market
+    const createAndSellNFT = async () => {
         if (!image || !price || !name || !description) return
         try {
             const result = await ipfsClient.add(JSON.stringify({ image, price, name, description }))
@@ -59,7 +59,7 @@ const Create = ({ marketplace, token }) => {
                             <Form.Control onChange={(e) => setDescription(e.target.value)} size="lg" required as="textarea" placeholder="Description" />
                             <Form.Control onChange={(e) => setPrice(e.target.value)} size="lg" required type="number" placeholder="Price in ETH" />
                             <div className="d-grid px-0">
-                                <Button onClick={createAndPlaceNFT} variant="primary" size="lg"> Create & Place NFT! </Button>
+                                <Button onClick={createAndSellNFT} variant="primary" size="lg"> Create & Sell NFT! </Button>
                             </div>
                         </Row>
                     </div>

@@ -73,7 +73,7 @@ const Market = ({ marketplace, token }) => {
                 </div>
                 : (
                     <main>
-                        <h2>Currently no NFT's at sale</h2>
+                        <h2 style={{ paddingTop: "2rem" }}>Currently no NFT's at sale</h2>
                     </main>
                 )}
         </div>
