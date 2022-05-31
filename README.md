@@ -21,7 +21,7 @@
 - Metamask --> add networks --> Network Name: "Hardhat" --> New RPC URL: "http://127.0.0.1:8545" --> Chain ID: "31337" --> save
 - Import private key from a provided account of your local blockchain
 ### 4. Deploy Smart Contracts to local blockchain
-`$ npx hardhat run src/backend/scripts/deploy.js --network localhost`
+`$ npx hardhat run src/scripts/deploy.js --network localhost`
 
 ### Run Application
 ### 1. Switch to webapp
