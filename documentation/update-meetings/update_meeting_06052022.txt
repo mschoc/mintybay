@@ -1,0 +1,33 @@
+Weekly Update Masterarbeit - 06.05.2022
+=======================================
+
+Teilnehmer: Marc Schoch, Thomas Bocek
+
+1. Organisatorisches
+- 
+
+2. Angegangene TODO's
+- init React App
+- init Truffle/Ganache
+- Erste Funktionen in Token Smart Contract
+- Erste Funktionen in Marketplace Smart Contract
+
+3. Nächste TODO's
+- Token & Marketplace Smart Contracts verbessern
+- Simples UI, welches Smart Contracts ansteuert
+- Automatic Testing mit Truffle, oder auf Hardhat umsteigen
+- IPFS Abklärung
+
+Fragen:
+- Token & Marketplace Contract besser trennen?
+- Logik erneuter Verkauf --> Approve address(this)?
+- Tips und best practices für npm dependency fixes
+- Metadaten Management?
+
+Notizen aus Gespräch:
+- Es gibt OpenSea Standard für Metadaten --> Interfaces
+- Dependency Bot Updater, Sneak Tests
+- Ether.js statt web3.js benutzen --> Ist neu State of the Art
+
+Nächster Termin: 27.05.2022, 15:15 Uhr
+

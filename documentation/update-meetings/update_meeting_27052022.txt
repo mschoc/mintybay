@@ -1,0 +1,31 @@
+Weekly Update Masterarbeit - 27.05.2022
+=======================================
+
+Teilnehmer: Marc Schoch, Thomas Bocek
+
+1. Organisatorisches
+- 
+
+2. Angegangene TODO's
+- Smart Contract überarbeitet
+- Smart Contract Deploy & Testing
+- Change to Hardhat
+- Frontend Components (Market, Create)
+
+3. Nächste TODO's
+- Verbesserungen UI Components
+- Automated Tests für Hardhat
+- My Collection Page Frontend Page
+- Fee Integration
+
+Fragen:
+- Marketplace contract: getUnsoldMarketItems oder direkt im Frontend (Wie jetzt integriert)? 
+- Automated Tests mit Hardhat in github Actions möglich?
+- Auf anderes Testnetz migrieren? z.B. Rapsten?
+
+Notizen aus Gespräch:
+- Hardhat Test kann mit GitHub Actions integriert werden
+- Empfehlung irgendwann auf Rinkeby Testnetzwerk zu deployen --> Vorerst reicht Hardhat
+- Smart Contracts so schlank wie möglich halten
+
+Nächster Termin: 10.06.2022, 15:15 Uhr
