@@ -23,7 +23,7 @@
 ### 4. Deploy Smart Contracts to local blockchain
 `$ npx hardhat run src/scripts/deploy.js --network localhost`
 
-### Run Application
+## Run Application
 ### 1. Switch to webapp
 `$ cd webapp`
 ### 2. Run Frontend Application
