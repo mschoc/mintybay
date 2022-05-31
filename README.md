@@ -1,4 +1,4 @@
-## mintybay.io - NFT Marketplace by Marc Schoch
+# mintybay.io - NFT Marketplace by Marc Schoch
 
 ## Requirements
 - NodeJS --> Install [NodeJS](https://nodejs.org/en/)
