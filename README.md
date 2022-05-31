@@ -4,15 +4,16 @@
 - NodeJS --> Install [NodeJS](https://nodejs.org/en/)
 - Hardhat --> Install [Hardhat](https://hardhat.org/)
 
-## Setup npm
+## Initial Setup
 ### 1. Clone Repository
-### 2. Switch to Webapp
+`$ git clone https://github.com/mschoc/mintybay.git`
+### 2. Switch to webapp
 `$ cd webapp`
 ### 3. Install npm dependencies
 `$ npm install`
 
 ## Setup Local Development Environment
-### 1. Switch to Webapp
+### 1. Switch to webapp
 `$ cd webapp`
 ### 2. Start hardhat local blockchain
 `$ npx hardhat node`
@@ -23,7 +24,7 @@
 `$ npx hardhat run src/backend/scripts/deploy.js --network localhost`
 
 ### Run Application
-### 1. Switch to Webapp
+### 1. Switch to webapp
 `$ cd webapp`
 ### 2. Run Frontend Application
 `$ npm run start`
