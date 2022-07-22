@@ -15,7 +15,9 @@ contract Marketplace is ReentrancyGuard{
         IERC721 token;
         address payable seller;
         address payable owner;
+        address payable creator;
         uint256 price;
+        uint256 royaltyFeePermillage;
         bool sold;
     }
 
@@ -27,7 +29,9 @@ contract Marketplace is ReentrancyGuard{
         address indexed tokenAddress,
         address seller,
         address owner,
-        uint256 price
+        address creator,
+        uint256 price,
+        uint256 royaltyFeePermillage
     );
 
     event marketItemSold(
@@ -36,17 +40,21 @@ contract Marketplace is ReentrancyGuard{
         address indexed tokenAddress,
         address seller,
         address buyer,
-        uint256 price
+        address creator,
+        uint256 price,
+        uint256 royaltyFeePermillage
     );
     
-    function createMarketItem(IERC721 token, uint256 tokenId, uint256 price) external nonReentrant{
+    function createMarketItem(IERC721 token, uint256 tokenId, uint256 price, uint256 royaltyFeePermillage) external nonReentrant{
         require(price > 0, "Price must be greater than zero");
         marketItemCount++;
         uint256 marketItemId = marketItemCount;
+        address payable creator = payable(msg.sender);
 
         for (uint256 i = 0; i < marketItemCount; i++) {
             if (marketItems[i + 1].tokenId == tokenId) {
                 marketItems[i + 1].owner = payable(address(0));
+                creator = marketItems[i + 1].creator;
             }
         }
 
@@ -56,7 +64,9 @@ contract Marketplace is ReentrancyGuard{
             token,
             payable(msg.sender),
             payable(address(0)),
+            creator, 
             price,
+            royaltyFeePermillage,
             false
         );
 
@@ -68,18 +78,29 @@ contract Marketplace is ReentrancyGuard{
             address(token),
             msg.sender,
             address(0),
-            price
+            creator,
+            price,
+            royaltyFeePermillage
         );
     }
 
-    function buyMarketItem(uint256 id) payable external nonReentrant{
+    function buyMarketItem(uint256 id) payable external nonReentrant{  
+        uint256 calculatedPrice = getCalculatedPrice(id);
+        uint256 royaltyFee = calculatedPrice - marketItems[id].price;
 
         require(id > 0 && id <= marketItemCount, "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
-        require(msg.value >= marketItems[id].price, "Insufficient funds");
+        require(msg.value >= calculatedPrice, "Insufficient funds to cover price + royalty fee");
         require(msg.sender != marketItems[id].seller, "Seller cannot be the same address as the buyer");
 
-        marketItems[id].seller.transfer(marketItems[id].price);
+        if(marketItems[id].seller == marketItems[id].creator){
+            // TODO: Differ primary and secondary market in terms of royalty fee? --> No royaltyFee if seller is creator?
+            marketItems[id].seller.transfer(calculatedPrice);
+        } else{
+            marketItems[id].seller.transfer(marketItems[id].price);
+            marketItems[id].creator.transfer(royaltyFee);
+        }
+        
         marketItems[id].token.transferFrom(address(this), msg.sender, marketItems[id].tokenId);
         marketItems[id].owner = payable(msg.sender);
         marketItems[id].sold = true;
@@ -92,10 +113,17 @@ contract Marketplace is ReentrancyGuard{
             address(marketItems[id].token),
             marketItems[id].seller,
             msg.sender,
-            marketItems[id].price
+            marketItems[id].creator,
+            marketItems[id].price,
+            marketItems[id].royaltyFeePermillage
         );
 
         marketItems[id].seller = payable(address(0));
+    }
+
+    function getCalculatedPrice(uint256 id) view public returns(uint256){
+        uint256 calculatedPrice = (marketItems[id].price*(1000 + marketItems[id].royaltyFeePermillage))/1000;
+        return calculatedPrice;
     }
 
     // for testing purposes
@@ -139,4 +167,5 @@ contract Marketplace is ReentrancyGuard{
         }
         return myItems;
     }
+
 }

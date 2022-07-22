@@ -27,11 +27,13 @@ describe("Marketplace", function () {
 
     // create market items with minted tokens
     const price = ethers.utils.parseUnits('10', 'ether')
-    await marketplace.connect(addr1).createMarketItem(tokenContractAddress, 1, price)
-    await marketplace.connect(addr1).createMarketItem(tokenContractAddress, 2, price)
+    const royaltyFeePermillage = 20;
+    await marketplace.connect(addr1).createMarketItem(tokenContractAddress, 1, price, royaltyFeePermillage)
+    await marketplace.connect(addr1).createMarketItem(tokenContractAddress, 2, price, royaltyFeePermillage)
 
     // buy market item
-    await marketplace.connect(addr2).buyMarketItem(1, {value: price});
+    const priceWithFee = await marketplace.connect(addr1).getCalculatedPrice(1);
+    await marketplace.connect(addr2).buyMarketItem(1, {value: priceWithFee});
 
     // return all unsold items
     let unsoldMarketItems = await marketplace.getUnsoldMarketItems()

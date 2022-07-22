@@ -23,6 +23,7 @@ const MyCollection = ({ marketplace, token, account }) => {
                     tokenId: item.tokenId,
                     tokenAddress: item.token,
                     seller: item.seller,
+                    royaltyFeePermillage: item.royaltyFeePermillage,
                     name: metadata.name,
                     description: metadata.description,
                     image: metadata.image
@@ -49,6 +50,7 @@ const MyCollection = ({ marketplace, token, account }) => {
                     tokenId: item.tokenId,
                     tokenAddress: item.token,
                     seller: item.seller,
+                    royaltyFeePermillage: item.royaltyFeePermillage,
                     name: metadata.name,
                     description: metadata.description,
                     image: metadata.image
@@ -63,7 +65,7 @@ const MyCollection = ({ marketplace, token, account }) => {
     const sellMarketItem = async (item) => {
         await (await token.setApprovalForAll(marketplace.address, true)).wait()
         const marketPrice = ethers.utils.parseEther(item.price.toString())
-        await (await marketplace.createMarketItem(item.tokenAddress, item.tokenId, marketPrice)).wait()
+        await (await marketplace.createMarketItem(item.tokenAddress, item.tokenId, marketPrice, item.royaltyFeePermillage)).wait()
         loadMyOwnedMarketItems()
         loadMyListedMarketItems()
     }

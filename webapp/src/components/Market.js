@@ -16,8 +16,10 @@ const Market = ({ marketplace, token }) => {
                 const uri = await token.tokenURI(item.tokenId)
                 const response = await fetch(uri)
                 const metadata = await response.json()
+                const priceWithFee = await marketplace.getCalculatedPrice(item.id)
                 items.push({
                     price: item.price,
+                    priceWithFee: priceWithFee,
                     itemId: item.id,
                     seller: item.seller,
                     name: metadata.name,
@@ -32,7 +34,7 @@ const Market = ({ marketplace, token }) => {
 
     // buy market item
     const buyMarketItem = async (item) => {
-        await (await marketplace.buyMarketItem(item.itemId, { value: item.price })).wait()
+        await (await marketplace.buyMarketItem(item.itemId, { value: item.priceWithFee })).wait()
         loadUnsoldMarketItems()
     }
 
@@ -62,7 +64,7 @@ const Market = ({ marketplace, token }) => {
                                     <Card.Footer>
                                         <div className='d-grid'>
                                             <Button onClick={() => buyMarketItem(item)} variant="primary" size="lg">
-                                                Buy for {ethers.utils.formatEther(item.price)} ETH
+                                                Buy for {ethers.utils.formatEther(item.priceWithFee)} ETH
                                             </Button>
                                         </div>
                                     </Card.Footer>
