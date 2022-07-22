@@ -9,6 +9,7 @@ const Create = ({ marketplace, token }) => {
 
     const [image, setImage] = useState('')
     const [price, setPrice] = useState(null)
+    const [royaltyFeePercentage, setRoyaltyFeePercentage] = useState(null)
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
 
@@ -45,7 +46,8 @@ const Create = ({ marketplace, token }) => {
         const id = await token.tokenIdCount()
         await (await token.setApprovalForAll(marketplace.address, true)).wait()
         const marketPrice = ethers.utils.parseEther(price.toString())
-        await (await marketplace.createMarketItem(token.address, id, marketPrice)).wait()
+        const royaltyFeePermillage = parseInt((royaltyFeePercentage*10), 10)
+        await (await marketplace.createMarketItem(token.address, id, marketPrice, royaltyFeePermillage)).wait()
     }
 
     return (
@@ -58,6 +60,7 @@ const Create = ({ marketplace, token }) => {
                             <Form.Control onChange={(e) => setName(e.target.value)} size="lg" required type="text" placeholder="Name" />
                             <Form.Control onChange={(e) => setDescription(e.target.value)} size="lg" required as="textarea" placeholder="Description" />
                             <Form.Control onChange={(e) => setPrice(e.target.value)} size="lg" required type="number" placeholder="Price in ETH" />
+                            <Form.Control onChange={(e) => setRoyaltyFeePercentage(e.target.value)} size="lg" required type="number" placeholder="Royalty fee in percent"/>
                             <div className="d-grid px-0">
                                 <Button onClick={createAndSellNFT} variant="primary" size="lg"> Create & Sell NFT! </Button>
                             </div>
