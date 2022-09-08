@@ -1,11 +1,15 @@
 const { ethers, artifacts } = require("hardhat");
 
+const TRANSACTION_FEE_PERMILLAGE = 5;
+
 async function main() {
+
     const [deployer] = await ethers.getSigners();
+
     console.log("Deploying contracts with the account:", deployer.address);
 
     const Marketplace = await ethers.getContractFactory("Marketplace");
-    const marketplace = await Marketplace.deploy();
+    const marketplace = await Marketplace.deploy(TRANSACTION_FEE_PERMILLAGE, deployer.address);
     await marketplace.deployed();
     console.log("Marketplace deployed to:", marketplace.address);
 

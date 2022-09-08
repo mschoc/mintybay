@@ -11,4 +11,11 @@ module.exports = {
     cache: "./src/cache",
     tests: "./src/test"
   },
+
+  networks: {
+    hardhat: {
+      gasPrice: 0,
+      initialBaseFeePerGas: 0
+    }
+  }
 };
