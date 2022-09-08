@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ethers } from "ethers"
-import { Row, Col, Card, Button } from 'react-bootstrap'
+import { Row, Col, Card, Button, Form } from 'react-bootstrap'
 
 const Market = ({ marketplace, token }) => {
     const [loading, setLoading] = useState(true)
@@ -16,15 +16,22 @@ const Market = ({ marketplace, token }) => {
                 const uri = await token.tokenURI(item.tokenId)
                 const response = await fetch(uri)
                 const metadata = await response.json()
-                const priceWithFee = await marketplace.getCalculatedPrice(item.id)
+                const priceWithFees = await marketplace.getCalculatedTotalPrice(item.id)
+                let creatorName = await marketplace.getAccountName(metadata.creatorAddress)
+                if(creatorName === ""){
+                    creatorName = (metadata.creatorAddress).slice(0, 4) + '...' + (metadata.creatorAddress).slice(38, 42);
+                }
+                
                 items.push({
                     price: item.price,
-                    priceWithFee: priceWithFee,
+                    priceWithFees: priceWithFees,
                     itemId: item.id,
                     seller: item.seller,
                     name: metadata.name,
                     description: metadata.description,
-                    image: metadata.image
+                    image: metadata.image,
+                    offerPrice: 0,
+                    creatorName: creatorName
                 })
             }
         }
@@ -34,8 +41,20 @@ const Market = ({ marketplace, token }) => {
 
     // buy market item
     const buyMarketItem = async (item) => {
-        await (await marketplace.buyMarketItem(item.itemId, { value: item.priceWithFee })).wait()
+        await (await marketplace.buyMarketItem(item.itemId, { value: item.priceWithFees })).wait()
         loadUnsoldMarketItems()
+    }
+
+    // make offer
+    const makeOffer = async (item) => {
+        const offerPrice = ethers.utils.parseEther(item.offerPrice.toString())
+        await (await marketplace.makeOffer(item.itemId, { value: offerPrice })).wait()
+        loadUnsoldMarketItems()
+    }
+
+    // set price
+    const setOfferPriceForItem = async (item, offerPrice) => {
+        item.offerPrice = offerPrice;
     }
 
     // effect hook for loading
@@ -44,7 +63,7 @@ const Market = ({ marketplace, token }) => {
     }, [])
     if (loading) return (
         <main>
-            <h2>Loading NFT's...</h2>
+            <h2 style={{ paddingTop: "2rem", paddingBottom: "2em" }}>Loading NFT's... &#x23F3;</h2>
         </main>
     )
 
@@ -59,13 +78,22 @@ const Market = ({ marketplace, token }) => {
                                     <Card.Img variant="top" src={item.image} />
                                     <Card.Body color="secondary">
                                         <Card.Title>{item.name}</Card.Title>
+                                        <Card.Text style={{ fontSize: "0.8rem" }} >by {item.creatorName}</Card.Text>
                                         <Card.Text>{item.description}</Card.Text>
                                     </Card.Body>
                                     <Card.Footer>
                                         <div className='d-grid'>
                                             <Button onClick={() => buyMarketItem(item)} variant="primary" size="lg">
-                                                Buy for {ethers.utils.formatEther(item.priceWithFee)} ETH
+                                                Buy for {ethers.utils.formatEther(item.priceWithFees)} ETH
                                             </Button>
+                                        </div>
+                                    </Card.Footer>
+                                    <Card.Footer>
+                                        <div className='d-grid'>
+                                            <Button onClick={() => makeOffer(item)} variant="primary" size="lg">
+                                                Make Offer
+                                            </Button>
+                                            <Form.Control onChange={(e) => setOfferPriceForItem(item, e.target.value)} size="lg" required type="number" placeholder={ethers.utils.formatEther(item.price)} />
                                         </div>
                                     </Card.Footer>
                                 </Card>

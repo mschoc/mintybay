@@ -5,6 +5,7 @@ import Nav from './Navbar';
 import Market from './Market.js'
 import Create from './Create.js'
 import MyCollection from './MyCollection.js'
+import Settings from './Settings.js'
 import MarketplaceContractData from '../contractsData/Marketplace.json'
 import MarketplaceAddress from '../contractsData/Marketplace-address.json'
 import TokenContractData from '../contractsData/Token.json'
@@ -30,7 +31,7 @@ function App() {
         loadContracts(signer)
     }
 
-    // load contract dataö
+    // load contract data
     const loadContracts = async (signer) => {
         const marketplace = new ethers.Contract(MarketplaceAddress.address, MarketplaceContractData.abi, signer)
         setMarketplace(marketplace)
@@ -42,6 +43,7 @@ function App() {
     return (
         <BrowserRouter>
             <div className="App">
+
                 <Nav web3Handler={web3Handler} account={account} />
                 <div>
                     {loading ? (
@@ -54,14 +56,18 @@ function App() {
                                 <Market marketplace={marketplace} token={token} />
                             } />
                             <Route path="/create" element={
-                                <Create marketplace={marketplace} token={token} />
+                                <Create marketplace={marketplace} token={token} account={account} />
                             } />
                             <Route path="/mycollection" element={
                                 <MyCollection marketplace={marketplace} token={token} account={account}/>
                             } />
+                            <Route path="/settings" element={
+                                <Settings marketplace={marketplace} account={account}/>
+                            } />
                         </Routes>
                     )}
                 </div>
+                
             </div>
         </BrowserRouter>
     );
