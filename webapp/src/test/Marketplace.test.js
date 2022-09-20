@@ -47,7 +47,8 @@ describe("Marketplace", function () {
     });
 
     describe("Create market items", function () {
-        let price = ethers.utils.parseUnits('10', 'ether')
+        let price = toWei(10);
+        let zeroPrice = toWei(0);
         let royaltyFeePermillage = 20;
         
         it("Checks if the market item attributes are correct after a new market item is created", async function () {
@@ -68,7 +69,16 @@ describe("Marketplace", function () {
             expect(marketItem.royaltyFeePermillage).to.equal(royaltyFeePermillage);
             expect(marketItem.sold).to.equal(false);
             expect(await marketplace.marketItemCount()).to.equal(1);
-          });
+        });
+
+        it("Checks if the item creation fails when the price is 0", async function () {
+            // mint token
+            await token.connect(addr1).mint("https...3")
+            // set approval for marketplace
+            await token.connect(addr1).setApprovalForAll(marketplace.address, true)
+            // check if create market item with zero price fails
+            await expect(marketplace.connect(addr1).createMarketItem(tokenContractAddress, 1, zeroPrice, royaltyFeePermillage)).to.be.revertedWith("Price must be greater than zero"); 
+        });
     });
 
 
@@ -76,6 +86,7 @@ describe("Marketplace", function () {
     // PRIMARY MARKET: First listing and purchase of a token after its minting
     describe("Buy a token from the marketplace in primary market", function () {
         let price = toWei(10)
+        let insufficientValue = toWei(10)
         let royaltyFeePermillage = 20;
 
         beforeEach(async function () {
@@ -87,7 +98,7 @@ describe("Marketplace", function () {
             await marketplace.connect(addr3).createMarketItem(tokenContractAddress, 1, price, royaltyFeePermillage)
         })
 
-        it("Checks if the balances of the buyer and seller aswell as the market item attributes are correct after a token is purchased in primary market", async function () {
+        it("Checks if the balances of the buyer and seller aswell as the market item attributes are correct after a token is purchased in primary market and checks if buying the same item again fails because it is already sold", async function () {
             const buyerBalanceBeforePurchase = fromWei(await addr4.getBalance())
             const sellerBalanceBeforePurchase = fromWei(await addr3.getBalance())
             const trxFeeReceiverBalanceBeforePurchase = fromWei(await transactionFeeReceiver.getBalance())
@@ -114,7 +125,22 @@ describe("Marketplace", function () {
             expect(boughtMarketItem.sold).to.equal(true);
             expect(boughtMarketItem.owner).to.equal(addr4.address);
             expect(await token.ownerOf(1)).to.equal(addr4.address); 
-        });  
+
+            // check if buyMarketItem fails if the item is already sold
+            await expect(marketplace.connect(addr4).buyMarketItem(1, {value: calculatedTotalPrice})).to.be.revertedWith("Item is already sold");  
+        });
+
+        it("Checks if the purchase of the token fails when the item does not exist, the value is insufficient to cover price, royalty fee and transaction fee and the is the seller has same address as the buyer", async function () {
+            const calculatedTotalPrice = await marketplace.getCalculatedTotalPrice(1)
+
+            // check if buyMarketItem with a non-existing item does fail
+            await expect(marketplace.connect(addr4).buyMarketItem(2, {value: calculatedTotalPrice})).to.be.revertedWith("Item does not exist");
+            // check if buyMarketItem with a insufficient value added does fail
+            // await expect(marketplace.connect(addr4).buyMarketItem(1, {value: insufficientValue})).to.be.revertedWith("Insufficient funds to cover price, royalty fee + transaction fee");
+            // check if buyMarketitem with seller same as buyer does fail
+            await expect(marketplace.connect(addr3).buyMarketItem(1, {value: calculatedTotalPrice})).to.be.revertedWith("Seller cannot be the same address as the buyer");
+
+        });
     });
 
     // SECONDARY MARKET: Listing and purchase of a token which has already been listed and purchased at least 1 time after its minting
@@ -163,7 +189,7 @@ describe("Marketplace", function () {
             const creatorBalanceBeforePurchase = fromWei(await addr5.getBalance())
             const trxFeeReceiverBalanceBeforePurchase = fromWei(await transactionFeeReceiver.getBalance())
             const calculatedTotalPrice = await marketplace.getCalculatedTotalPrice(2)
-            const royalteFee = await marketplace.getCalculatedFeeOnFixedPrice(2, royaltyFeePermillage);
+            const royaltyFee = await marketplace.getCalculatedFeeOnFixedPrice(2, royaltyFeePermillage);
             const transactionFee = await marketplace.getCalculatedFeeOnFixedPrice(2, TRANSACTION_FEE_PERMILLAGE);
 
             // buy market item
@@ -179,7 +205,7 @@ describe("Marketplace", function () {
             // check if balance of seller is correct after the purchase
             expect(parseFloat(sellerBalanceAfterPurchase)).to.equal(parseFloat(sellerBalanceBeforePurchase) + parseFloat(fromWei(resellingPrice)))
             // check if balance of creator is correct after the purchase
-            expect(parseFloat(creatorBalanceAfterPurchase)).to.equal(parseFloat(creatorBalanceBeforePurchase) + parseFloat(fromWei(royalteFee)))
+            expect(parseFloat(creatorBalanceAfterPurchase)).to.equal(parseFloat(creatorBalanceBeforePurchase) + parseFloat(fromWei(royaltyFee)))
             // check if balance of transaction fee receiver is correct after the purchase
             expect(parseFloat(trxFeeReceiverBalanceAfterPurchase)).to.equal(parseFloat(trxFeeReceiverBalanceBeforePurchase) + parseFloat(fromWei(transactionFee))) 
 
@@ -192,10 +218,12 @@ describe("Marketplace", function () {
         });  
     });
 
-    describe("Make an offer for a token and accept/withdraw the offer", function () {
+    describe("Make an offer for a token and accept/withdraw the offer in the primary market", function () {
         let price = toWei(10)
         let royaltyFeePermillage = 20;
-        let offerPrice = toWei(5)
+        let offerPrice = toWei(5);
+        let higherOfferPrice = toWei(6);
+        let zeroOfferPrice = toWei(0);
 
         beforeEach(async function () {
             // mint token
@@ -217,16 +245,13 @@ describe("Marketplace", function () {
             // check if balance of offerer is correct after the withdrawal
             expect(parseFloat(offererBalanceAfterOffer)).to.equal(parseFloat(offererBalanceBeforeOffer) - parseFloat(fromWei(offerPrice)))
 
-            const offer = await marketplace.getOffers(1, addr4.address);
-            const offerer = await marketplace.getOfferers(1, 0);
-
             // check if attributes of offer and offerer are correct
-            expect(offer.offerer).to.equal(addr4.address);
-            expect(offer.price).to.equal(offerPrice);
-            expect(offerer.offerer).to.equal(addr4.address);
+            expect((await marketplace.getOffers(1, addr4.address)).offerer).to.equal(addr4.address);
+            expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(offerPrice);
+            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal(addr4.address);
         });
 
-        it("Checks if the balance of the offerer, seller and fee receiver are correct aswell as the attributes involved in the process are correct after an offer is accepted", async function () {
+        it("Checks if the balance of the offerer, seller and fee receiver are correct aswell as the attributes involved in the process are correct after an offer is accepted and checks if making offer for the same item again fails", async function () {
             // make offer
             await marketplace.connect(addr4).makeOffer(1, {value: offerPrice})
 
@@ -250,13 +275,10 @@ describe("Marketplace", function () {
             // check if balance of transaction fee receiver is correct after the purchase
             expect(parseFloat(trxFeeReceiverBalanceAfterAcceptance)).to.equal(parseFloat(trxFeeReceiverBalanceBeforeAcceptance) + parseFloat(fromWei(transactionFee)))
 
-            const offererAfterAcceptance = await marketplace.getOfferers(1, 0);
-            const offerAfterAcceptance = await marketplace.getOffers(1, addr4.address);
-
             // check if offerer is deleted
-            expect(offererAfterAcceptance.offerer).to.equal('0x0000000000000000000000000000000000000000')
+            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
             // check if offer is deleted
-            expect(offerAfterAcceptance.price).to.equal(0)
+            expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(0)
 
             boughtMarketItem = await marketplace.marketItems(1);
 
@@ -264,6 +286,10 @@ describe("Marketplace", function () {
             expect(boughtMarketItem.sold).to.equal(true);
             expect(boughtMarketItem.owner).to.equal(addr4.address);
             expect(await token.ownerOf(1)).to.equal(addr4.address);
+
+            // check if make offer fails when item is already sold
+            await expect(marketplace.connect(addr4).makeOffer(1, {value: offerPrice})).to.be.revertedWith("Item is already sold");
+
         });
 
         it("Checks if the balance of the offerer aswell as the attributes involved in the process are correct after an offer is withdrawn", async function () {
@@ -280,14 +306,112 @@ describe("Marketplace", function () {
             // check if balance of offerer is correct after the withdrawal
             expect(parseFloat(offererBalanceAfterWithdrawal)).to.equal(parseFloat(offererBalanceBeforeWithdrawal) + parseFloat(fromWei(offerPrice)))
 
-            const offererAfterWithdrawal = await marketplace.getOfferers(1, 0);
-            const offerAfterWithdrawal = await marketplace.getOffers(1, addr4.address);
-
             // check if offerer is deleted
-            expect(offererAfterWithdrawal.offerer).to.equal('0x0000000000000000000000000000000000000000')
+            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
             // check if offer is deleted
-            expect(offerAfterWithdrawal.price).to.equal(0)
+            expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(0)
         });
+
+        it("Checks if highest offer function is providing the correct offer price", async function () {
+            // make offer
+            await marketplace.connect(addr4).makeOffer(1, {value: offerPrice});
+            // make offer with a higher price
+            await marketplace.connect(addr5).makeOffer(1, {value: higherOfferPrice});
+
+            // check if the the highest offer is correct
+            expect((await marketplace.connect(addr4).getHighestOffer(1)).price).to.equal(higherOfferPrice);
+
+        });
+
+        it("Checks if making an offer fails when the item does not exist, the seller is the same address as the offerer, the offer price is zero", async function () {
+
+            //check if make offer fails when the item does not exist
+            await expect(marketplace.connect(addr4).makeOffer(3, {value: offerPrice})).to.be.revertedWith("Item does not exist");
+            //check if make offer fails when the seller is the same address as the offerer
+            await expect(marketplace.connect(addr3).makeOffer(1, {value: offerPrice})).to.be.revertedWith("Seller cannot be the same address as the offerer");
+            //check if make offer fails when the offer price is zero
+            await expect(marketplace.connect(addr4).makeOffer(1, {value: zeroOfferPrice})).to.be.revertedWith("Offer invalid, must be above zero");
+
+        });
+    });
+
+    describe("Make an offer for a token and accept it in secondary market", function () {
+        let price = toWei(10)
+        let royaltyFeePermillage = 20;
+        let resellingPrice = toWei(20);
+        let offerPrice = toWei(5);
+
+        beforeEach(async function () {
+            // mint token
+            await token.connect(addr5).mint("https...4")
+            // set approval for marketplace
+            await token.connect(addr5).setApprovalForAll(marketplace.address, true)
+            // create market item
+            await marketplace.connect(addr5).createMarketItem(tokenContractAddress, 1, price, royaltyFeePermillage)
+            // buy market item in primary market
+            const calculatedTotalPrice = await marketplace.getCalculatedTotalPrice(1)
+            await marketplace.connect(addr6).buyMarketItem(1, {value: calculatedTotalPrice})
+            // set approval for marketplace
+            await token.connect(addr6).setApprovalForAll(marketplace.address, true)
+            // sell market item again
+            await marketplace.connect(addr6).createMarketItem(tokenContractAddress, 1, resellingPrice, royaltyFeePermillage)
+        });
+
+        it("Checks if the balance of the seller and the creator are correct aswell after an offer is accepted in secondary market", async function () {
+            // make offer
+            await marketplace.connect(addr7).makeOffer(2, {value: offerPrice})
+
+            // const offererBalanceBeforeAcceptance = fromWei(await addr7.getBalance());
+            const sellerBalanceBeforeAcceptance = fromWei(await addr6.getBalance());
+            const creatorBalanceBeforeAcceptance = fromWei(await addr5.getBalance());
+            //const trxFeeReceiverBalanceBeforeAcceptance = fromWei(await transactionFeeReceiver.getBalance());
+            const royaltyFee = await marketplace.getCalculatedFeeOnOfferPrice(2, offerPrice, royaltyFeePermillage);
+            const transactionFee = await marketplace.getCalculatedFeeOnOfferPrice(2, offerPrice, TRANSACTION_FEE_PERMILLAGE);
+            const offerer = await marketplace.getOfferers(2, 0);
+
+            // accept offer
+            await marketplace.connect(addr6).acceptOffer(2, offerer.offerer);
+
+            // const offererBalanceAfterAcceptance = fromWei(await addr7.getBalance());
+            const sellerBalanceAfterAcceptance = fromWei(await addr6.getBalance());
+            const creatorBalanceAfterAcceptance = fromWei(await addr5.getBalance());
+            //const trxFeeReceiverBalanceAfterAcceptance = fromWei(await transactionFeeReceiver.getBalance());
+
+            // check if balance of offerer is correct after the acceptance
+            // expect(parseFloat(offererBalanceAfterAcceptance)).to.equal(parseFloat(offererBalanceBeforeAcceptance))
+            // check if balance of seller is correct after the purchase
+            expect(parseFloat(sellerBalanceAfterAcceptance)).to.equal(parseFloat(sellerBalanceBeforeAcceptance) + (parseFloat(fromWei(offerPrice) - fromWei(transactionFee) - fromWei(royaltyFee))))
+            // check if balance of creator is correct after the purchase
+            expect(parseFloat(creatorBalanceAfterAcceptance)).to.equal(parseFloat(creatorBalanceBeforeAcceptance) + parseFloat(fromWei(royaltyFee)))
+            // check if balance of transaction fee receiver is correct after the purchase
+            //expect(parseFloat(trxFeeReceiverBalanceAfterAcceptance)).to.equal(parseFloat(trxFeeReceiverBalanceBeforeAcceptance) + parseFloat(fromWei(transactionFee)))
+
+            // // check if offerer is deleted
+            // expect((await marketplace.getOfferers(2, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
+            // // check if offer is deleted
+            // expect((await marketplace.getOffers(2, addr7.address)).price).to.equal(0)
+
+            // boughtMarketItem = await marketplace.marketItems(2);
+
+            // // check if attributes of bought market item are correct after the offer acceptance
+            // expect(boughtMarketItem.sold).to.equal(true);
+            // expect(boughtMarketItem.owner).to.equal(addr7.address);
+            // expect(await token.ownerOf(2)).to.equal(addr7.address);
+        });
+    });
+
+    describe("Set an account name", function () {
+        const accountName = "SuperMinter11"
+
+        it("Checks if the set account name is mapped to the address", async function () {
+
+            // set account name
+            await marketplace.connect(addr7).setAccountName(accountName);
+
+            // check if the accountName is mapped to the address
+            expect(await marketplace.connect(addr7).getAccountName(addr7.address)).to.equal(accountName);
+        });
+
     });
     
 });

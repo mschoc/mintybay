@@ -48,5 +48,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+
+  "devDependencies": {
+    "ganache-cli": "^6.12.2",
+    "solidity-coverage": "^0.8.2"
   }
 }

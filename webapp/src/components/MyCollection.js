@@ -158,7 +158,7 @@ const MyCollection = ({ marketplace, token, account }) => {
     }, [])
     if (loading) return (
         <main>
-            <h2>Loading NFT's...</h2>
+            <h2 style={{ paddingTop: "2rem", paddingBottom: "2em" }}>Loading NFT's... &#x23F3;</h2>
         </main>
     )
 

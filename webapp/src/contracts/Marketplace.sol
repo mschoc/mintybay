@@ -5,11 +5,30 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
+/**
+@title IERC721Receiver
+@author Marc Schoch
+@dev Defines NFT receiver functions within the ERC721 protocol
+*/
 interface IERC721Receiver {
-
+    /**
+    @dev Defines the structure of the onERC721Received function - we can not simply use the onERC721Received function of OpenZeppelin as
+    we need the function to be payable in order to transfer funds.
+    @param operator (seller address of the nft)
+    @param from (marketplace address)
+    @param id (market item id which every market item gets assigned when created)
+    @param data (offerer address)
+    @return bytes4 (selector of the function)
+    */
     function onERC721Received(address operator, address from, uint256 id, bytes calldata data) payable external returns (bytes4);
 }
 
+/**
+@title Marketplace
+@author Marc Schoch
+@notice Provides functionality of the marketplace application
+@dev Handles market items, stores market information and provides functions to interact within the ERC721 protocol
+*/
 contract Marketplace is ReentrancyGuard{
 
     //--- Variables ---//
@@ -85,7 +104,7 @@ contract Marketplace is ReentrancyGuard{
         uint256 price
     );
 
-    event OfferWithdrew(
+    event OfferWithdrawn(
         uint256 indexed id,
         uint256 indexed tokenId, 
         address indexed tokenAddress, 
@@ -104,6 +123,11 @@ contract Marketplace is ReentrancyGuard{
 
     //--- Constructor ---//
 
+    /**
+    @dev Sets the transactionFeePermillage and the transactionFeeReceiverAddress when instantiating a marketplace contract 
+    @param transactionFeePermillage (fee in permillage that users have to pay for each transaction)
+    @param transactionFeeReceiverAddress (address which receives all earned transaction fees from the marketplace)
+    */
     constructor(uint256 transactionFeePermillage, address transactionFeeReceiverAddress) {
         TRANSACTION_FEE_RECEIVER_ADDRESS = payable(transactionFeeReceiverAddress);
         TRANSACTION_FEE_PERMILLAGE = transactionFeePermillage;
@@ -111,6 +135,13 @@ contract Marketplace is ReentrancyGuard{
 
     //--- Functions ---//
 
+    /**
+    @dev Creates a new market item, maps it to the market id and transfers the NFT to the marketplace address
+    @param token (address of the NFT)
+    @param tokenId (id of the NFT)
+    @param price (selling price)
+    @param royaltyFeePermillage (Fee in permillage which future buyers have to pay to the creator for each transaction)
+    */
     function createMarketItem(IERC721 token, uint256 tokenId, uint256 price, uint256 royaltyFeePermillage) external nonReentrant{
         require(price > 0, "Price must be greater than zero");
         marketItemCount++;
@@ -150,6 +181,11 @@ contract Marketplace is ReentrancyGuard{
         );
     }
 
+    /**
+    @dev Transfers price to the seller, transfers royalty fee to the creator, transfers transaction fee to the transaction fee receiver, 
+    transfers NFT to the buyer, updates the market item attributes
+    @param id (market item id which every market item gets assigned when created)
+    */
     function buyMarketItem(uint256 id) payable external nonReentrant{  
         uint256 calculatedTotalPrice = getCalculatedTotalPrice(id);
         uint256 royaltyFee = getCalculatedFeeOnFixedPrice(id, marketItems[id].royaltyFeePermillage);
@@ -157,7 +193,7 @@ contract Marketplace is ReentrancyGuard{
 
         require(id > 0 && id <= marketItemCount, "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
-        require(msg.value >= calculatedTotalPrice, "Insufficient funds to cover price + royalty fee");
+        require(msg.value >= calculatedTotalPrice, "Insufficient funds to cover price, royalty fee + transaction fee");
         require(msg.sender != marketItems[id].seller, "Seller cannot be the same address as the buyer");
 
         if(marketItems[id].seller == marketItems[id].creator){
@@ -189,10 +225,16 @@ contract Marketplace is ReentrancyGuard{
         marketItems[id].seller = payable(address(0));
     }
 
+    /**
+    @dev Creates an offer item and maps it to the market id and the offerer, 
+    creates an offerer item and maps it to the market item id
+    @param id (market item id which every market item gets assigned when created)
+    */
     function makeOffer (uint256 id) payable external nonReentrant{
         require(id > 0 && id <= marketItemCount, "Item does not exist");
         require(!marketItems[id].sold, "Item is already sold");
         require(msg.sender != marketItems[id].seller, "Seller cannot be the same address as the offerer");
+        require(msg.value > 0, "Offer invalid, must be above zero");
 
         _offers[id][msg.sender] = Offer(msg.sender, msg.value);
         addToOfferers(id, msg.sender);
@@ -206,6 +248,11 @@ contract Marketplace is ReentrancyGuard{
         );
     }
     
+    /**
+    @dev Deletes the offer item mapped to the market item id, deletes the offerer item mapped to the market item id, 
+    transfers value back to offerer/withdrawer
+    @param id (market item id which every market item gets assigned when created)
+    */
     function withdrawOffer(uint256 id) payable external nonReentrant{
         uint256 offerPrice =  _offers[id][msg.sender].price; 
         delete(_offers[id][msg.sender]);
@@ -218,7 +265,7 @@ contract Marketplace is ReentrancyGuard{
 
         payable(msg.sender).transfer(offerPrice);
 
-        emit OfferWithdrew(
+        emit OfferWithdrawn(
             id, 
             marketItems[id].tokenId, 
             address(marketItems[id].token),
@@ -227,18 +274,29 @@ contract Marketplace is ReentrancyGuard{
         );
     }
 
+    /**
+    @dev Triggers function onERC721Received
+    @param id (market item id which every market item gets assigned when created)
+    @param offerer (address of the offerer)
+    */
     function acceptOffer(uint256 id, bytes memory offerer) payable external nonReentrant{
-        uint256 tokenId = marketItems[id].tokenId;
-
-        bytes4 retVal = IERC721Receiver(address(this)).onERC721Received(msg.sender, address(this), tokenId, offerer);
+        bytes4 retVal = IERC721Receiver(address(this)).onERC721Received(msg.sender, address(this), id, offerer);
         require (retVal == IERC721Receiver.onERC721Received.selector, "ERC721: transfer to non ERC721Receiver implementer");
     }
     
-
+    /**
+    @dev Transfers net offer price to the seller, transfers royalty fee to the creator, transfers transaction fee to the transaction fee receiver,
+    transfers the NFT to the offerer/buyer, deletes offer item mapped to the market item id, deletes offerer mapped to the market item id, 
+    updates market item attributes
+    @param from (marketplace address)
+    @param id (market item id which every market item gets assigned when created)
+    @param data (offerer address)
+    @return bytes4 (selector of the function)
+    */
     function onERC721Received(address, address from, uint256 id, bytes calldata data) payable external returns (bytes4) {
         address offerer = bytesToAddress(data);
         uint256 offerPrice = _offers[id][offerer].price;
-        require(offerPrice > 0, "Offer invalid");
+        require(offerPrice > 0, "Offer invalid, must be above zero");
         uint256 royaltyFee = getCalculatedFeeOnOfferPrice(id, offerPrice, marketItems[id].royaltyFeePermillage);
         uint256 transactionFee = getCalculatedFeeOnOfferPrice(id, offerPrice, TRANSACTION_FEE_PERMILLAGE);
         uint256 netOfferPrice = offerPrice - royaltyFee - transactionFee;
@@ -280,7 +338,12 @@ contract Marketplace is ReentrancyGuard{
 
         return IERC721Receiver.onERC721Received.selector;
     }
-    
+
+    /**
+    @dev Transforms a bytes stream to an address
+    @param bs (bytes stream)
+    @return address
+    */
     function bytesToAddress(bytes memory bs) private pure returns (address) {
         require(bs.length >= 20, "slicing out of range");
         address addr;
@@ -291,6 +354,11 @@ contract Marketplace is ReentrancyGuard{
         return addr;
     }
 
+    /**
+    @dev Iterates through all offer items mapped to the market item id to provide the offer item with the highest offer price 
+    @param id (market item id which every market item gets assigned when created)
+    @return Offer (offer item)
+    */
     function getHighestOffer(uint256 id) public view returns (Offer memory){
         uint256 highestOfferPrice = 0;
         address highestOfferer = address(0);
@@ -306,37 +374,87 @@ contract Marketplace is ReentrancyGuard{
         return _offers[id][highestOfferer];
     }
 
+    /**
+    @dev Maps a new offerer item to the market item id
+    @param id (market item id which every market item gets assigned when created)
+    @param offerer (offerer address)
+    */
     function addToOfferers(uint256 id, address offerer) public {
         _offerers[id].push(Offerer(offerer));
     }
 
+    /**
+    @dev Provides an offerer item for a given market item id and index
+    @param id (market item id which every market item gets assigned when created)
+    @param index (position in offerer array)
+    @return Offerer
+    */
     function getOfferers(uint256 id, uint256 index) external view returns(Offerer memory){
         return _offerers[id][index];
     }
 
+    /**
+    @dev Provides an offer item for a given market item id and offerer
+    @param id (market item id which every market item gets assigned when created)
+    @param offerer (offerer address)
+    @return Offer
+    */
     function getOffers(uint256 id, address offerer) external view returns (Offer memory) {
         return _offers[id][offerer];
     }
 
-    function getCalculatedTotalPrice(uint256 id) view public returns(uint256){
+    /**
+    @dev Provides the calculated total price including the royalty fee and transaction fee,
+    calculating with uint256 can cause minor rounding differences which causes minor inaccuracies
+    when transferring ether
+    @param id (market item id which every market item gets assigned when created)
+    @return uint256 (calculated total price)
+    */
+    function getCalculatedTotalPrice(uint256 id) public view returns(uint256){
         uint256 calculatedPrice = (marketItems[id].price*(1000 + marketItems[id].royaltyFeePermillage + TRANSACTION_FEE_PERMILLAGE))/1000;
         return calculatedPrice;
     }
 
-    function getCalculatedFeeOnFixedPrice(uint256 id, uint256 feePermillage) view public returns(uint256){
+    /**
+    @dev Provides the calculated fee based on a fixed price, the function is used for the direct buying process
+    calculating with uint256 can cause minor rounding differences which causes minor inaccuracies
+    when transferring ether
+    @param id (market item id which every market item gets assigned when created)
+    @param feePermillage (fee in permillage which can either be royalty fee or transaction fee)
+    @return uint256 (calculated fee)
+    */
+    function getCalculatedFeeOnFixedPrice(uint256 id, uint256 feePermillage) public view returns(uint256){
         uint256 calculatedFee = (marketItems[id].price/1000) * feePermillage;
         return calculatedFee;
     }
 
-    function getCalculatedFeeOnOfferPrice(uint256 id, uint256 price, uint256 feePermillage) view public returns(uint256){
+    /**
+    @dev Provides the calculated fee based on an offer price, the function is used for the offering process
+    calculating with uint256 can cause minor rounding differences which causes minor inaccuracies
+    when transferring ether
+    @param id (market item id which every market item gets assigned when created)
+    @param price (offer price)
+    @param feePermillage (fee in permillage which can either be royalty fee or transaction fee)
+    @return uint256 (calculated fee)
+    */
+    function getCalculatedFeeOnOfferPrice(uint256 id, uint256 price, uint256 feePermillage) public view returns(uint256){
         uint256 calculatedFee = (price/(1000 + marketItems[id].royaltyFeePermillage + TRANSACTION_FEE_PERMILLAGE))*feePermillage;
         return calculatedFee; 
     }
 
-    function setAccountName(string memory accountName) public {
+    /**
+    @dev Maps the accountName to the callers address
+    @param accountName (name input of the user as a string)
+    */
+    function setAccountName(string memory accountName) external {
         _accountNames[msg.sender] = accountName;
     }
 
+    /**
+    @dev Provides the account name mapped to the account address
+    @param accountAddress (wallet address of the account)
+    @return string (account name)
+    */
     function getAccountName(address accountAddress) external view returns(string memory){
         return _accountNames[accountAddress];
     }
