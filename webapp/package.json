@@ -24,7 +24,6 @@
     "react-router": "^6.2.1",
     "react-router-dom": "^6.2.1",
     "react-scripts": "5.0.1",
-    "solidity-coverage": "^0.8.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -50,5 +49,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+
+  "devDependencies": {
+    "solidity-coverage": "^0.8.2"
   }
 }
