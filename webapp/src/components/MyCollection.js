@@ -79,6 +79,7 @@ const MyCollection = ({ marketplace, token, account }) => {
         setMyListedItems(myListedItems)
     }
 
+    // load my offers
     const loadMyOffers = async () => {
         const marketItemCount = await marketplace.marketItemCount()
         let myOffers = []
@@ -116,8 +117,6 @@ const MyCollection = ({ marketplace, token, account }) => {
         setLoading(false)
         setMyOffers(myOffers)
     }
-
-
 
     // sell market item
     const sellMarketItem = async (item) => {
