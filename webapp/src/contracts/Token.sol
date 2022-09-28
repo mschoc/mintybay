@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 /**
 @title Token
 @author Marc Schoch
-@notice Provides functionality an NFT object
+@notice Provides functionality of an NFT object
 @dev Stores NFT information, provides functionality to mint a new NFT, handles NFT functions within the the ERC721 protocol
 */
 contract Token is ERC721URIStorage {

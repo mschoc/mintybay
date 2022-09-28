@@ -26,7 +26,7 @@ interface IERC721Receiver {
 /**
 @title Marketplace
 @author Marc Schoch
-@notice Provides functionality of the marketplace application
+@notice Provides functionality of all operations in the marketplace application
 @dev Handles market items, stores market information and provides functions to interact within the ERC721 protocol
 */
 contract Marketplace is ReentrancyGuard{
@@ -52,14 +52,16 @@ contract Marketplace is ReentrancyGuard{
         bool sold;
     }
 
+    // attributes in struct Offer are needed to map back from price to offerer
     struct Offer{
         address offerer;
         uint256 price;
     }
 
-    struct Offerer{
-        address offerer;
-    }
+    // // struct Offerer with one attribute is designed this way in order to be expandable for further attributes
+    // struct Offerer{
+    //     address offerer;
+    // }
 
     //--- Mappings ---//
 
@@ -68,7 +70,7 @@ contract Marketplace is ReentrancyGuard{
     // marketId => offerer => price 
     mapping(uint256 => mapping(address => Offer)) private _offers;
     // marketId => Array of offerers
-    mapping(uint256 => Offerer[]) private _offerers;
+    mapping(uint256 => address[]) private _offerers;
     // account address => account name
     mapping(address => string) private _accountNames;
 
@@ -258,7 +260,7 @@ contract Marketplace is ReentrancyGuard{
         delete(_offers[id][msg.sender]);
 
         for (uint256 i = 0; i < _offerers[id].length; i++) {
-            if(_offerers[id][i].offerer == msg.sender){
+            if(_offerers[id][i] == msg.sender){
                 delete(_offerers[id][i]);
             }
         }
@@ -304,7 +306,7 @@ contract Marketplace is ReentrancyGuard{
         delete(_offers[id][offerer]);
 
         for (uint256 i = 0; i < _offerers[id].length; i++) {
-            if(_offerers[id][i].offerer == offerer){
+            if(_offerers[id][i] == offerer){
                 delete(_offerers[id][i]);
             }
         }
@@ -364,10 +366,10 @@ contract Marketplace is ReentrancyGuard{
         address highestOfferer = address(0);
 
         for(uint256 i = 0; i < _offerers[id].length; i++){
-            uint256 offerPrice = (_offers[id][_offerers[id][i].offerer]).price;
+            uint256 offerPrice = (_offers[id][_offerers[id][i]]).price;
             if(offerPrice > highestOfferPrice){
                 highestOfferPrice = offerPrice;
-                highestOfferer = _offers[id][_offerers[id][i].offerer].offerer;
+                highestOfferer = _offers[id][_offerers[id][i]].offerer;
             }
         }
 
@@ -380,16 +382,16 @@ contract Marketplace is ReentrancyGuard{
     @param offerer (offerer address)
     */
     function addToOfferers(uint256 id, address offerer) public {
-        _offerers[id].push(Offerer(offerer));
+        _offerers[id].push(offerer);
     }
 
     /**
     @dev Provides an offerer item for a given market item id and index
     @param id (market item id which every market item gets assigned when created)
     @param index (position in offerer array)
-    @return Offerer
+    @return address (offerer)
     */
-    function getOfferers(uint256 id, uint256 index) external view returns(Offerer memory){
+    function getOfferers(uint256 id, uint256 index) external view returns(address){
         return _offerers[id][index];
     }
 
@@ -397,7 +399,7 @@ contract Marketplace is ReentrancyGuard{
     @dev Provides an offer item for a given market item id and offerer
     @param id (market item id which every market item gets assigned when created)
     @param offerer (offerer address)
-    @return Offer
+    @return Offer (offer item)
     */
     function getOffers(uint256 id, address offerer) external view returns (Offer memory) {
         return _offers[id][offerer];

@@ -135,7 +135,7 @@ describe("Marketplace", function () {
 
             // check if buyMarketItem with a non-existing item does fail
             await expect(marketplace.connect(addr4).buyMarketItem(2, {value: calculatedTotalPrice})).to.be.revertedWith("Item does not exist");
-            // check if buyMarketItem with a insufficient value added does fail
+            // check if buyMarketItem with a insufficient value added does fail (This check is commented out because there is an error occurring when the given value for buyMarketItem is below the necessary value --> bug need to be fixed in the future)
             // await expect(marketplace.connect(addr4).buyMarketItem(1, {value: insufficientValue})).to.be.revertedWith("Insufficient funds to cover price, royalty fee + transaction fee");
             // check if buyMarketitem with seller same as buyer does fail
             await expect(marketplace.connect(addr3).buyMarketItem(1, {value: calculatedTotalPrice})).to.be.revertedWith("Seller cannot be the same address as the buyer");
@@ -248,7 +248,7 @@ describe("Marketplace", function () {
             // check if attributes of offer and offerer are correct
             expect((await marketplace.getOffers(1, addr4.address)).offerer).to.equal(addr4.address);
             expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(offerPrice);
-            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal(addr4.address);
+            expect((await marketplace.getOfferers(1, 0))).to.equal(addr4.address);
         });
 
         it("Checks if the balance of the offerer, seller and fee receiver are correct aswell as the attributes involved in the process are correct after an offer is accepted and checks if making offer for the same item again fails", async function () {
@@ -262,7 +262,7 @@ describe("Marketplace", function () {
             const offerer = await marketplace.getOfferers(1, 0);
 
             // accept offer
-            await marketplace.connect(addr3).acceptOffer(1, offerer.offerer);
+            await marketplace.connect(addr3).acceptOffer(1, offerer);
 
             const offererBalanceAfterAcceptance = fromWei(await addr4.getBalance());
             const sellerBalanceAfterAcceptance = fromWei(await addr3.getBalance())
@@ -276,7 +276,7 @@ describe("Marketplace", function () {
             expect(parseFloat(trxFeeReceiverBalanceAfterAcceptance)).to.equal(parseFloat(trxFeeReceiverBalanceBeforeAcceptance) + parseFloat(fromWei(transactionFee)))
 
             // check if offerer is deleted
-            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
+            expect((await marketplace.getOfferers(1, 0))).to.equal('0x0000000000000000000000000000000000000000')
             // check if offer is deleted
             expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(0)
 
@@ -307,7 +307,7 @@ describe("Marketplace", function () {
             expect(parseFloat(offererBalanceAfterWithdrawal)).to.equal(parseFloat(offererBalanceBeforeWithdrawal) + parseFloat(fromWei(offerPrice)))
 
             // check if offerer is deleted
-            expect((await marketplace.getOfferers(1, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
+            expect((await marketplace.getOfferers(1, 0))).to.equal('0x0000000000000000000000000000000000000000')
             // check if offer is deleted
             expect((await marketplace.getOffers(1, addr4.address)).price).to.equal(0)
         });
@@ -361,42 +361,22 @@ describe("Marketplace", function () {
             // make offer
             await marketplace.connect(addr7).makeOffer(2, {value: offerPrice})
 
-            // const offererBalanceBeforeAcceptance = fromWei(await addr7.getBalance());
             const sellerBalanceBeforeAcceptance = fromWei(await addr6.getBalance());
             const creatorBalanceBeforeAcceptance = fromWei(await addr5.getBalance());
-            //const trxFeeReceiverBalanceBeforeAcceptance = fromWei(await transactionFeeReceiver.getBalance());
             const royaltyFee = await marketplace.getCalculatedFeeOnOfferPrice(2, offerPrice, royaltyFeePermillage);
             const transactionFee = await marketplace.getCalculatedFeeOnOfferPrice(2, offerPrice, TRANSACTION_FEE_PERMILLAGE);
             const offerer = await marketplace.getOfferers(2, 0);
 
             // accept offer
-            await marketplace.connect(addr6).acceptOffer(2, offerer.offerer);
+            await marketplace.connect(addr6).acceptOffer(2, offerer);
 
-            // const offererBalanceAfterAcceptance = fromWei(await addr7.getBalance());
             const sellerBalanceAfterAcceptance = fromWei(await addr6.getBalance());
             const creatorBalanceAfterAcceptance = fromWei(await addr5.getBalance());
-            //const trxFeeReceiverBalanceAfterAcceptance = fromWei(await transactionFeeReceiver.getBalance());
 
-            // check if balance of offerer is correct after the acceptance
-            // expect(parseFloat(offererBalanceAfterAcceptance)).to.equal(parseFloat(offererBalanceBeforeAcceptance))
             // check if balance of seller is correct after the purchase
             expect(parseFloat(sellerBalanceAfterAcceptance)).to.equal(parseFloat(sellerBalanceBeforeAcceptance) + (parseFloat(fromWei(offerPrice) - fromWei(transactionFee) - fromWei(royaltyFee))))
             // check if balance of creator is correct after the purchase
             expect(parseFloat(creatorBalanceAfterAcceptance)).to.equal(parseFloat(creatorBalanceBeforeAcceptance) + parseFloat(fromWei(royaltyFee)))
-            // check if balance of transaction fee receiver is correct after the purchase
-            //expect(parseFloat(trxFeeReceiverBalanceAfterAcceptance)).to.equal(parseFloat(trxFeeReceiverBalanceBeforeAcceptance) + parseFloat(fromWei(transactionFee)))
-
-            // // check if offerer is deleted
-            // expect((await marketplace.getOfferers(2, 0)).offerer).to.equal('0x0000000000000000000000000000000000000000')
-            // // check if offer is deleted
-            // expect((await marketplace.getOffers(2, addr7.address)).price).to.equal(0)
-
-            // boughtMarketItem = await marketplace.marketItems(2);
-
-            // // check if attributes of bought market item are correct after the offer acceptance
-            // expect(boughtMarketItem.sold).to.equal(true);
-            // expect(boughtMarketItem.owner).to.equal(addr7.address);
-            // expect(await token.ownerOf(2)).to.equal(addr7.address);
         });
     });
 
