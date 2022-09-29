@@ -58,11 +58,6 @@ contract Marketplace is ReentrancyGuard{
         uint256 price;
     }
 
-    // // struct Offerer with one attribute is designed this way in order to be expandable for further attributes
-    // struct Offerer{
-    //     address offerer;
-    // }
-
     //--- Mappings ---//
 
     // marketId => marketItem
